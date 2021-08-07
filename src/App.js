@@ -1,12 +1,56 @@
-import { Button, FormHelperText, TextField } from "@material-ui/core";
-import React, { useState } from "react";
+import {
+  Button,
+  Checkbox,
+  FormHelperText,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  makeStyles,
+  TextField,
+} from "@material-ui/core";
+
+import React, { useState, useEffect } from "react";
+
+import db from "./firebase";
+import firebase from "firebase";
 
 function App() {
+  const useStyles = makeStyles((theme) => ({
+    root: {
+      width: "100%",
+      maxWidth: 360,
+      backgroundColor: theme.palette.background.paper,
+    },
+  }));
+
   const [todo, setTodo] = useState([]);
   const [input, setInput] = useState("");
-  // console.log("value ->",input);
+  const classes = useStyles();
+  const [checked, setChecked] = React.useState([0]);
 
-  // console.log("todo ->",todo);
+  useEffect(() => {
+    async function getData() {
+      const { docs: dbCollection } = await await db.collection("todos").get();
+      const todos = [];
+      dbCollection.forEach((doc) => todos.push(doc.data()["todo"]));
+      // console.log(todos);
+      setTodo([...todos]);
+    }
+    getData();
+  });
+
+  const handleToggle = (value) => () => {
+    const currentIndex = checked.indexOf(value);
+    const newChecked = [...checked];
+
+    if (currentIndex === -1) {
+      newChecked.push(value);
+    } else {
+      newChecked.splice(currentIndex, 1);
+    }
+
+    setChecked(newChecked);
+  };
 
   return (
     <div>
@@ -15,7 +59,11 @@ function App() {
       <form
         action="Submit"
         onSubmit={(e) => {
-          setTodo([...todo, input]);
+          db.collection("todos").add({
+            todo: input,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+          // setTodo([...todo, input]);
           setInput("");
           e.preventDefault();
         }}
@@ -38,7 +86,12 @@ function App() {
           variant="contained"
           color="primary"
           onClick={() => {
-            setTodo([...todo, input]);
+            db.collection("todos").add({
+              todo: input,
+              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+
+            // setTodo([...todo, input]);
             setInput("");
           }}
           disabled={!input}
@@ -51,8 +104,30 @@ function App() {
         <ul>
           {todo.map((item) => (
             <div>
-              <li key={item}>{item}</li>
-              <button>Delete</button>
+              <ListItem
+                key={item}
+                role={undefined}
+                dense
+                button
+                onClick={handleToggle(item)}
+              >
+                <ListItemIcon>
+                  <Checkbox
+                    edge="start"
+                    checked={checked.indexOf(item) !== -1}
+                    tabIndex={-1}
+                    disableRipple
+                    inputProps={{ "aria-labelledby": item }}
+                  />
+                </ListItemIcon>
+                <ListItemText id={item} primary={item} />
+                <Button variant="contained" color="secondary">
+                  DELETE
+                </Button>
+                <Button variant="contained" color="primary">
+                  CHECK/UNCHECK
+                </Button>
+              </ListItem>
             </div>
           ))}
         </ul>
