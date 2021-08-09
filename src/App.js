@@ -6,15 +6,23 @@ import {
   ListItemText,
 } from "@material-ui/core";
 import DeleteForeverIcon from "@material-ui/icons/DeleteForever";
+// import { makeStyles } from '@material-ui/core/styles';
+import Modal from "@material-ui/core/Modal";
+import Backdrop from "@material-ui/core/Backdrop";
+import Fade from "@material-ui/core/Fade";
 
 import React, { Component } from "react";
 import db from "./firebase";
 import firebase from "firebase/app";
+import "./App.css";
 
 class App extends Component {
   state = {
     todo: [],
     input: "",
+    open: false,
+    modalInput: "",
+    editId: "akumpadam",
   };
 
   async componentDidMount() {
@@ -63,11 +71,75 @@ class App extends Component {
     this.setState({ todo });
   };
 
+  handleOpen = (item) => {
+    // console.log("handleOpen =>",item);
+    this.setState({ open: true, editId: item.id });
+  };
+
+  handleClose = () => {
+    this.setState({ open: false });
+  };
+
+  handleModalChange = (e) => {
+    this.setState({ modalInput: e.target.value });
+  };
+
+  handleTodoEdit = async () => {
+    const input = this.state.modalInput;
+    const itemId = this.state.editId;
+    // console.log("handle Todo Edit : ", this.state.editId, input);
+
+    await db
+      .collection("todos")
+      .doc(itemId)
+      .set({ todo: input }, { merge: true });
+    const { docs: dbCollection } = await db
+      .collection("todos")
+      .orderBy("timestamp", "desc")
+      .get();
+    const todo = [...dbCollection];
+    this.setState({ todo, modalInput: "" });
+
+    this.setState({ open: false });
+  };
+
   render() {
-    const { todo, input } = this.state;
+    const { todo, input, editId } = this.state;
+    // console.log('editId => ',editId);
     return (
       <div>
         <h1>Todo List Application</h1>
+        <Modal
+          aria-labelledby="transition-modal-title"
+          aria-describedby="transition-modal-description"
+          className="modal"
+          open={this.state.open}
+          onClose={this.handleClose}
+          closeAfterTransition
+          BackdropComponent={Backdrop}
+          BackdropProps={{
+            timeout: 500,
+          }}
+        >
+          <Fade in={this.state.open}>
+            <div className="paper">
+              <div>
+                <h2 id="transition-modal-title">Edit your Todo item here!</h2>
+                <p id="transition-modal-description">
+                  You can enter the modfied todo in the below input field!
+                </p>
+                <input
+                  type="text"
+                  value={this.state.modalInput}
+                  onChange={(e) => this.handleModalChange(e)}
+                />
+                <button onClick={() => this.handleTodoEdit()}>
+                  Edit finished!
+                </button>
+              </div>
+            </div>
+          </Fade>
+        </Modal>
 
         <form action="Submit" onSubmit={(e) => this.handleSubmit(e)}>
           <TextField
@@ -100,6 +172,15 @@ class App extends Component {
               <div key={item.id}>
                 <ListItem role={undefined} dense button>
                   <ListItemText primary={item.data().todo} />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // console.log("edit onClick =>",item)
+                      this.handleOpen(item);
+                    }}
+                  >
+                    Edit
+                  </button>
 
                   <DeleteForeverIcon onClick={() => this.handleDelete(item)} />
                 </ListItem>
